@@ -16,7 +16,6 @@ import {
   Copy,
   Check,
   AlertTriangle,
-  DollarSign,
   ShoppingBasket,
   Utensils,
   Salad,

@@ -17,7 +17,6 @@ import {
   RotateCcw,
   AlertTriangle,
   DollarSign,
-  ShieldCheck,
   Layers,
 } from "lucide-react";
 import type { MultimodalOutput } from "@/app/api/scanner/multimodal/route";
