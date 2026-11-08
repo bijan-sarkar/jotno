@@ -6,7 +6,7 @@ import { LayoutGrid, ScanLine, ChefHat, LineChart, Salad } from "lucide-react";
 
 const TABS = [
   { href: "/dashboard", label: "Home", icon: LayoutGrid, match: ["/dashboard"] },
-  { href: "/scanner", label: "Scan", icon: ScanLine, match: ["/scanner", "/menusafe"] },
+  { href: "/scanner", label: "Scan", icon: ScanLine, match: ["/scanner", "/menusafe", "/live"] },
   { href: "/recipes", label: "Recipes", icon: ChefHat, match: ["/recipes"] },
   { href: "/telemetry", label: "Glucose", icon: LineChart, match: ["/telemetry"] },
   { href: "/deficits", label: "Nutrition", icon: Salad, match: ["/deficits"] },

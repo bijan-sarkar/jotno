@@ -98,7 +98,8 @@ export default function ElderHomePage() {
         const context = result.glucose_context ?? "random";
         setPending({ value: result.glucose_value, context });
         setReply(null);
-        speak(`${toBanglaDigits(result.glucose_value)}, ${CONTEXT_LABELS_BN[context]}। ঠিক আছে?`);
+        const displayMmol = result.glucose_value > 35 ? Number((result.glucose_value / 18).toFixed(1)) : result.glucose_value;
+        speak(`${toBanglaDigits(displayMmol)} মিলিমোল, ${CONTEXT_LABELS_BN[context]}। ঠিক আছে?`);
         return;
       }
       if (result.action === "call_for_help") {
@@ -192,7 +193,16 @@ export default function ElderHomePage() {
     say("ঠিক আছে, রাখলাম না। সংখ্যাটি আবার বলুন বা নিজে লিখুন।");
   };
 
-  if (!mounted) return <main className="min-h-dvh" />;
+  if (!mounted) {
+    return (
+      <main className="flex min-h-dvh flex-col items-center justify-center p-6 text-center">
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-pastel-blue text-pastel-blue-ink animate-pulse">
+          <Droplet className="h-8 w-8" />
+        </div>
+        <p className="mt-4 text-base font-semibold text-ink-muted">লোড হচ্ছে…</p>
+      </main>
+    );
+  }
 
   if (!settings || editingSettings) {
     return (
@@ -251,7 +261,10 @@ export default function ElderHomePage() {
           <div className="min-w-0 flex-1">
             <p className="text-base font-semibold text-ink-muted">শেষ সুগার · {formatWhen(latest.measured_at)}</p>
             <div className="mt-0.5 flex flex-wrap items-center gap-2">
-              <span className="text-4xl font-bold text-ink">{toBanglaDigits(latest.glucose_value)}</span>
+              <span className="text-4xl font-bold text-ink">
+                {toBanglaDigits(latest.glucose_value <= 35 ? latest.glucose_value : Number((latest.glucose_value / 18).toFixed(1)))}
+              </span>
+              <span className="text-lg font-bold text-ink-muted">mmol/L</span>
               <span className={`rounded-full px-3 py-1 text-base font-bold ${LEVEL_STYLES[latestLevel]}`}>
                 {LEVEL_LABELS_BN[latestLevel]}
               </span>
@@ -370,7 +383,8 @@ export default function ElderHomePage() {
           onSubmit={(value) => {
             setNumberEntry(false);
             setPending({ value, context: "random" });
-            speak(`${toBanglaDigits(value)}। ঠিক আছে?`);
+            const displayMmol = value > 35 ? Number((value / 18).toFixed(1)) : value;
+            speak(`${toBanglaDigits(displayMmol)} মিলিমোল। ঠিক আছে?`);
           }}
         />
       )}

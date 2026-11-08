@@ -398,7 +398,9 @@ function RecipeContent() {
                 <div>
                   <p className="font-bold">
                     Tip: add {currentRecipe.localized_buffer_pivot.item_name} (~
-                    {currentRecipe.localized_buffer_pivot.estimated_cost})
+                    {currentRecipe.localized_buffer_pivot.estimated_cost?.includes("$")
+                      ? `৳${Math.round(parseFloat(currentRecipe.localized_buffer_pivot.estimated_cost.replace(/[^0-9.]/g, '') || "0.5") * 120)} / ${currentRecipe.localized_buffer_pivot.estimated_cost}`
+                      : currentRecipe.localized_buffer_pivot.estimated_cost})
                   </p>
                   <p className="mt-0.5 text-sm font-medium opacity-80">{currentRecipe.localized_buffer_pivot.benefit}</p>
                 </div>

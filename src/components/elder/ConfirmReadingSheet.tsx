@@ -26,7 +26,7 @@ export default function ConfirmReadingSheet({ value, context, onContextChange, o
 
         <div className="mt-4 rounded-[28px] bg-pastel-blue py-6 text-center text-pastel-blue-ink">
           <p className="text-7xl font-bold leading-none">{toBanglaDigits(value)}</p>
-          <p className="mt-2 text-lg font-semibold">mg/dL</p>
+          <p className="mt-2 text-lg font-semibold">{value <= 35 ? "mmol/L (মিলিমোল)" : `${(value / 18).toFixed(1)} mmol/L (${value} mg/dL)`}</p>
         </div>
 
         <p className="mt-5 text-lg font-semibold text-ink-soft">কখন মেপেছেন?</p>

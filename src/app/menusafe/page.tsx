@@ -14,6 +14,7 @@ import {
   X,
   ShoppingBasket,
   Search,
+  Sparkles,
 } from "lucide-react";
 import type { MenuItem, MenuScanResponse } from "@/lib/validations/menusafe";
 import PageHeader from "@/components/app/PageHeader";
@@ -187,22 +188,29 @@ export default function MenuSafePage() {
       <PageHeader title="Scan" subtitle="Check foods before you buy or order" />
 
       <main className="px-4 py-4 space-y-5">
-        {/* Groceries / Menu segmented control */}
-        <div className="grid grid-cols-2 gap-1 rounded-full bg-white p-1 shadow-soft">
+        {/* Groceries / Menu / Live Voice segmented control */}
+        <div className="grid grid-cols-3 gap-1 rounded-full bg-white p-1 shadow-soft">
           <Link
             href="/scanner"
-            className="flex h-11 items-center justify-center gap-2 rounded-full text-sm font-semibold text-ink-soft active:bg-canvas"
+            className="flex h-11 items-center justify-center gap-1.5 rounded-full text-xs font-semibold text-ink-soft active:bg-canvas"
           >
             <ShoppingBasket className="h-4 w-4" />
             Groceries
           </Link>
           <span
             aria-current="page"
-            className="flex h-11 items-center justify-center gap-2 rounded-full bg-ink text-sm font-bold text-white"
+            className="flex h-11 items-center justify-center gap-1.5 rounded-full bg-ink text-xs font-bold text-white"
           >
             <Utensils className="h-4 w-4" />
-            Restaurant menu
+            Menu
           </span>
+          <Link
+            href="/live"
+            className="flex h-11 items-center justify-center gap-1.5 rounded-full text-xs font-semibold text-emerald-700 bg-emerald-50 active:bg-emerald-100"
+          >
+            <Sparkles className="h-4 w-4 text-emerald-600" />
+            Live Voice
+          </Link>
         </div>
 
         {/* Photo upload */}

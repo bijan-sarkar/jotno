@@ -28,9 +28,10 @@ const CONTEXT_LABELS: Record<string, string> = {
 };
 
 function readingStatus(value: number) {
-  if (value < 70) return "Low";
-  if (value <= 140) return "In range";
-  if (value <= 180) return "Elevated";
+  const valMg = value <= 35 ? value * 18 : value;
+  if (valMg < 70) return "Low";
+  if (valMg <= 140) return "In range";
+  if (valMg <= 180) return "Elevated";
   return "High";
 }
 
@@ -83,8 +84,8 @@ function Tile({
 }
 
 const FOOD_ROWS = [
-  { href: "/scanner", label: "Scan groceries", icon: ScanLine },
-  { href: "/menusafe", label: "Check a menu", icon: Utensils },
+  { href: "/scanner", label: "Jotno Live Scan", icon: ScanLine },
+  { href: "/scanner", label: "Auto Food & Menu", icon: Utensils },
   { href: "/recipes", label: "Make a recipe", icon: ChefHat },
 ];
 
@@ -161,8 +162,13 @@ export default function DashboardPage() {
           >
             {latest ? (
               <>
-                <p className="text-4xl font-extrabold leading-none text-pastel-blue-ink">{latest.glucose_value}</p>
-                <p className="mt-1 text-xs font-bold">mg/dL · {readingStatus(latest.glucose_value)}</p>
+                <p className="text-4xl font-extrabold leading-none text-pastel-blue-ink">
+                  {latest.glucose_value <= 35 ? latest.glucose_value : Number((latest.glucose_value / 18).toFixed(1))}
+                </p>
+                <p className="mt-1 text-xs font-bold">
+                  mmol/L · {readingStatus(latest.glucose_value)}
+                  {latest.glucose_value > 35 && <span className="opacity-70"> ({latest.glucose_value} mg/dL)</span>}
+                </p>
                 <p className="mt-1 text-xs font-medium opacity-75">
                   {CONTEXT_LABELS[latest.context] ?? latest.context} · {timeAgo(latest.measured_at)}
                 </p>

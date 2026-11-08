@@ -2,7 +2,7 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { z } from "zod";
 import { env, getSystemEnvStatus } from "@/lib/env";
 import { measurementContextSchema } from "@/lib/validations/telemetry";
-import { fromBanglaDigits } from "@/lib/assistant/bangla";
+import { fromBanglaDigits, toBanglaDigits } from "@/lib/assistant/bangla";
 import { BANGLA_CLINICAL_REFUSAL, isUnsafeRequest, scrubReply } from "@/lib/assistant/safety";
 import { shrinkSpeechWav } from "@/lib/assistant/wav";
 
@@ -10,8 +10,8 @@ import { shrinkSpeechWav } from "@/lib/assistant/wav";
  * Bangla voice/photo assistant for elderly users.
  * Flash-lite models answer in ~2s; the larger flash model is a last resort when lite models are busy.
  */
-export const ASSISTANT_MODELS = ["gemini-3.5-flash-lite", "gemini-3.1-flash-lite", "gemini-3.5-flash"];
-export const TTS_MODELS = ["gemini-3.8-flash-lite-tts", "gemini-3.8-flash-tts", "gemini-2.5-flash-preview-tts"];
+export const ASSISTANT_MODELS = ["gemini-2.5-flash", "gemini-3.5-flash-lite", "gemini-3.1-flash-lite", "gemini-3.5-flash"];
+export const TTS_MODELS = ["gemini-3.8-flash-lite-tts", "gemini-2.5-flash-preview-tts", "gemini-3.8-flash-tts"];
 const MODEL_TIMEOUT_MS = 9000;
 
 export type AssistantMode = "talk" | "meter" | "food";
@@ -28,7 +28,7 @@ export const assistantResultSchema = z.object({
   transcript: z.string().default(""),
   reply: z.string().min(1),
   action: z.enum(["none", "log_glucose", "call_for_help"]).default("none"),
-  glucose_value: z.number().min(20).max(600).nullable().optional(),
+  glucose_value: z.number().min(1).max(600).nullable().optional(),
   glucose_context: measurementContextSchema.nullable().optional(),
   food_verdict: z.enum(["good", "limit", "avoid"]).nullable().optional(),
 });
@@ -41,7 +41,7 @@ const RESPONSE_SCHEMA = {
     transcript: { type: Type.STRING, description: "What the user said, written in Bangla. Empty for photos." },
     reply: { type: Type.STRING, description: "Spoken reply in very simple Bangla, at most 2 short sentences." },
     action: { type: Type.STRING, enum: ["none", "log_glucose", "call_for_help"] },
-    glucose_value: { type: Type.NUMBER, nullable: true, description: "Blood glucose in mg/dL" },
+    glucose_value: { type: Type.NUMBER, nullable: true, description: "Blood glucose in mmol/L or mg/dL" },
     glucose_context: { type: Type.STRING, enum: ["fasting", "post_meal", "bedtime", "random"], nullable: true },
     food_verdict: { type: Type.STRING, enum: ["good", "limit", "avoid"], nullable: true },
   },
@@ -53,7 +53,7 @@ function systemPrompt(mode: AssistantMode, userName?: string) {
   const modeRule = {
     talk: "ব্যবহারকারী বাংলায় কথা বলেছেন। আগে transcript-এ ঠিক যা বলেছেন তা লিখুন।",
     meter:
-      "ছবিটি একটি গ্লুকোমিটারের। পর্দার সংখ্যাটি পড়ুন (mg/dL)। পড়া গেলে action=log_glucose, glucose_value দিন, glucose_context=random। পড়া না গেলে action=none এবং বলুন মিটারটি কাছে ও আলোতে ধরে আবার ছবি তুলতে। mmol/L হলে ১৮ দিয়ে গুণ করে mg/dL দিন।",
+      "ছবিটি একটি গ্লুকোমিটারের। পর্দার সংখ্যাটি পড়ুন। বাংলাদেশে রক্তে সুগার mmol/L (মিলিমোল/লিটার) এককে হিসাব করা হয়। যদি মিটারে সংখ্যাটি mg/dL এ থাকে (যেমন: ১২০, ১৪০), তবে ১৮ দিয়ে ভাগ করে mmol/L মান দিন। পড়া গেলে action=log_glucose, glucose_value দিন (যেমন: 6.5), glucose_context=random। পড়া না গেলে action=none এবং বলুন মিটারটি কাছে ও আলোতে ধরে আবার ছবি তুলতে।",
     food:
       "ছবিটি খাবার বা বাজারের জিনিসের। কী কী দেখছেন বাংলায় নাম বলুন এবং ডায়াবেটিসের জন্য কেমন তা বলুন। food_verdict: good (ভালো), limit (অল্প খান), avoid (এড়িয়ে চলুন)। পরিমাণ বলতে মুঠো, কাপ, চামচ ব্যবহার করুন, গ্রাম নয়।",
   }[mode];
@@ -63,7 +63,8 @@ function systemPrompt(mode: AssistantMode, userName?: string) {
 - সবসময় খুব সহজ, সম্মানজনক বাংলায় (আপনি) উত্তর দিন। সর্বোচ্চ দুইটি ছোট বাক্য। কঠিন বা ইংরেজি শব্দ নয়।
 - নাম ধরে ডাকলে শুধু নামটি বলুন; চাচা, খালা, ভাই, আপা, দাদা ইত্যাদি সম্বোধন যোগ করবেন না, কারণ আপনি ব্যবহারকারীর লিঙ্গ বা সম্পর্ক জানেন না।
 - সংখ্যা বাংলা অঙ্কে লিখুন।
-- ব্যবহারকারী সুগারের মান বললে: action=log_glucose, glucose_value (mg/dL), glucose_context (খালি পেটে=fasting, খাওয়ার পরে=post_meal, ঘুমানোর আগে=bedtime, না বললে random)। reply-তে শুধু মানটি বলে নিশ্চিত হতে চান।
+- বাংলাদেশে ডায়াবেটিস ও রক্তের সুগার mmol/L (মিলিমোল) এককে হিসাব করা হয় (যেমন: ৬.৫, ৭.২, ৮.০)।
+- ব্যবহারকারী সুগারের মান বললে: action=log_glucose, glucose_value দিন (যদি mmol/L এ বলে যেমন ৬.৫, সেটাই দিন; যদি mg/dL এ বলে যেমন ১৪০, ১৮ দিয়ে ভাগ করে mmol/L দিন), glucose_context (খালি পেটে=fasting, খাওয়ার পরে=post_meal, ঘুমানোর আগে=bedtime, না বললে random)। reply-তে মানটি মিলিমোল এককে নিশ্চিত হতে চান (যেমন: "আপনার সুগার ৬.৫ মিলিমোল, তাই তো?")।
 - মাথা ঘোরা, কাঁপুনি, ঘাম, বুক ধড়ফড়, অজ্ঞান লাগা, বুকে ব্যথা, শ্বাসকষ্ট বললে: action=call_for_help এবং বলুন এখনই কাউকে ডাকতে।
 - ওষুধ বা ইনসুলিনের মাত্রা, ওষুধ বন্ধ/বাড়ানো/কমানো নিয়ে কখনো পরামর্শ দেবেন না; বলুন ডাক্তারের সাথে কথা বলতে।
 - আপনি ডাক্তার নন। নিশ্চিত না হলে ডাক্তারের কাছে যেতে বলুন।
@@ -101,16 +102,30 @@ export function finalizeResult(raw: z.infer<typeof assistantResultSchema>, input
 
 /** Offline / no-key fallback: understands typed numbers so manual logging still works. */
 export function fallbackResult(input: AssistantInput): AssistantResult {
-  const num = input.text ? Number(fromBanglaDigits(input.text).match(/\d{2,3}/)?.[0]) : NaN;
-  if (num >= 20 && num <= 600) {
-    return {
-      transcript: input.text ?? "",
-      reply: "ঠিক আছে, সংখ্যাটি দেখে নিন।",
-      action: "log_glucose",
-      glucose_value: num,
-      glucose_context: "random",
-      source: "fallback",
-    };
+  const raw = input.text ? fromBanglaDigits(input.text) : "";
+  const match = raw.match(/\d+(?:[.,]\d+)?/);
+  const num = match ? parseFloat(match[0].replace(",", ".")) : NaN;
+  if (!isNaN(num)) {
+    if (num >= 20 && num <= 600) {
+      return {
+        transcript: input.text ?? "",
+        reply: "ঠিক আছে, সংখ্যাটি দেখে নিন।",
+        action: "log_glucose",
+        glucose_value: num,
+        glucose_context: "random",
+        source: "fallback",
+      };
+    }
+    if (num >= 1.5 && num < 20) {
+      return {
+        transcript: input.text ?? "",
+        reply: `আপনার সুগার ${toBanglaDigits(num)} মিলিমোল, তাই তো?`,
+        action: "log_glucose",
+        glucose_value: num,
+        glucose_context: "random",
+        source: "fallback",
+      };
+    }
   }
   return {
     transcript: input.text ?? "",
@@ -173,12 +188,16 @@ export async function synthesizeBanglaSpeech(text: string): Promise<Buffer | nul
             speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Kore" } } },
           },
         }),
-        MODEL_TIMEOUT_MS * 2
+        3000
       );
       const audio = response.candidates?.[0]?.content?.parts?.find((p) => p.inlineData?.data)?.inlineData;
       if (audio?.data) return shrinkSpeechWav(Buffer.from(audio.data, "base64"), audio.mimeType);
     } catch (err: unknown) {
-      console.warn(`[Elder TTS] ${model} failed:`, err instanceof Error ? err.message : err);
+      const errMsg = err instanceof Error ? err.message : String(err);
+      console.warn(`[Elder TTS] ${model} failed:`, errMsg);
+      if (errMsg.includes("429") || errMsg.includes("RESOURCE_EXHAUSTED")) {
+        break;
+      }
     }
   }
   return null;

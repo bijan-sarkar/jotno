@@ -52,17 +52,18 @@ export default function QuickLogModal({
     setError(null);
 
     const val = parseFloat(glucoseValue);
-    if (isNaN(val) || val < 30 || val > 600) {
-      setError("Please enter a valid glucose reading between 30 and 600 mg/dL.");
+    if (isNaN(val) || val < 1.5 || val > 600) {
+      setError("Please enter a valid glucose reading between 1.5 and 35.0 mmol/L (or 30 to 600 mg/dL).");
       return;
     }
 
+    const mgValue = val <= 35 ? Math.round(val * 18.0182) : Math.round(val);
     const newLog: GlucoseLog = {
       id: "log-" + Date.now(),
-      glucose_value: Number(val.toFixed(0)),
+      glucose_value: mgValue,
       context,
       measured_at: new Date().toISOString(),
-      notes: notes.trim() || undefined,
+      notes: notes.trim() || (val <= 35 ? `${val} mmol/L` : undefined),
       linked_meal_title: mealTitle.trim() || undefined,
       day_offset: dayOffset,
     };
@@ -112,22 +113,27 @@ export default function QuickLogModal({
           )}
 
           {/* Reading Input */}
-          <div className="flex items-end justify-center gap-2 rounded-[28px] bg-pastel-blue px-4 py-8">
-            <input
-              type="number"
-              inputMode="numeric"
-              step="1"
-              min="30"
-              max="600"
-              autoFocus
-              required
-              aria-label="Glucose level in mg/dL"
-              value={glucoseValue}
-              onChange={(e) => setGlucoseValue(e.target.value)}
-              placeholder="115"
-              className="w-40 bg-transparent text-center text-6xl font-extrabold text-pastel-blue-ink placeholder:text-pastel-blue-strong/60 focus:outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-            />
-            <span className="mb-3 text-base font-bold text-pastel-blue-ink">mg/dL</span>
+          <div className="flex flex-col items-center justify-center rounded-[28px] bg-pastel-blue px-4 py-7">
+            <div className="flex items-end justify-center gap-2">
+              <input
+                type="number"
+                inputMode="decimal"
+                step="any"
+                min="1.5"
+                max="600"
+                autoFocus
+                required
+                aria-label="Glucose level in mmol/L or mg/dL"
+                value={glucoseValue}
+                onChange={(e) => setGlucoseValue(e.target.value)}
+                placeholder="6.5"
+                className="w-44 bg-transparent text-center text-6xl font-extrabold text-pastel-blue-ink placeholder:text-pastel-blue-strong/60 focus:outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+              />
+              <span className="mb-3 text-base font-bold text-pastel-blue-ink">mmol/L</span>
+            </div>
+            <p className="mt-1 text-xs font-semibold text-pastel-blue-ink/75">
+              Bangladesh standard (mmol/L) · or enter mg/dL (&gt; 35)
+            </p>
           </div>
 
           {/* Context Chips */}

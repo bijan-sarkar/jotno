@@ -14,9 +14,10 @@ export default function NumberEntrySheet({ onSubmit, onClose }: NumberEntrySheet
   const [error, setError] = useState<string | null>(null);
 
   const submit = () => {
-    const value = Number(fromBanglaDigits(text).replace(/[^\d]/g, ""));
-    if (!value || value < 20 || value > 600) {
-      setError("২০ থেকে ৬০০ এর মধ্যে একটি সংখ্যা লিখুন।");
+    const raw = fromBanglaDigits(text).replace(/[^\d.]/g, "");
+    const value = parseFloat(raw);
+    if (isNaN(value) || value < 1.5 || value > 600) {
+      setError("১.৫ থেকে ৩৫.০ mmol/L বা ২০ থেকে ৬০০ এর মধ্যে সংখ্যা লিখুন।");
       return;
     }
     onSubmit(value);
@@ -40,11 +41,12 @@ export default function NumberEntrySheet({ onSubmit, onClose }: NumberEntrySheet
             setError(null);
           }}
           onKeyDown={(e) => e.key === "Enter" && submit()}
-          inputMode="numeric"
+          inputMode="decimal"
           aria-label="সুগারের সংখ্যা"
-          placeholder="১৬০"
+          placeholder="৬.৫"
           className="input mt-5 h-20 text-center text-5xl font-bold"
         />
+        <p className="mt-1.5 text-center text-sm font-semibold text-ink-muted">একক: mmol/L (মিলিমোল) বা mg/dL</p>
         {error && <p className="mt-2 text-center text-lg font-semibold text-risk-dangerInk">{error}</p>}
         <div className="mt-5 grid grid-cols-2 gap-3">
           <button type="button" onClick={onClose} className="btn-secondary h-16 text-xl">

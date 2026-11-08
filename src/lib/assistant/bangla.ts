@@ -28,12 +28,13 @@ export type GlucoseLevel = "low" | "good" | "slightly_high" | "high" | "very_hig
 export const GLUCOSE_LOW = 70;
 export const GLUCOSE_VERY_HIGH = 300;
 
-/** Bands in mg/dL. `low` and `very_high` trigger the help screen. */
+/** Bands in mmol/L or mg/dL (low < 3.9 mmol/L, good <= 7.8 mmol/L, slightly_high <= 10.0 mmol/L, high < 16.7 mmol/L). `low` and `very_high` trigger the help screen. */
 export function classifyGlucose(value: number): GlucoseLevel {
-  if (value < GLUCOSE_LOW) return "low";
-  if (value <= 140) return "good";
-  if (value <= 180) return "slightly_high";
-  if (value < GLUCOSE_VERY_HIGH) return "high";
+  const valMg = value <= 35 ? value * 18 : value;
+  if (valMg < GLUCOSE_LOW) return "low";
+  if (valMg <= 140) return "good";
+  if (valMg <= 180) return "slightly_high";
+  if (valMg < GLUCOSE_VERY_HIGH) return "high";
   return "very_high";
 }
 
@@ -48,18 +49,25 @@ export const LEVEL_LABELS_BN: Record<GlucoseLevel, string> = {
 /** Spoken feedback after a reading is saved. Never mentions medication doses. */
 export function readingFeedbackBn(value: number): string {
   const n = toBanglaDigits(value);
+  const unitSuffix = value <= 35 ? " মিলিমোল" : "";
   switch (classifyGlucose(value)) {
     case "low":
-      return `আপনার সুগার ${n}, এটা কম। এখনই আধা গ্লাস ফলের রস বা এক চামচ চিনি পানিতে গুলে খান। ১৫ মিনিট পরে আবার মাপুন।`;
+      return `আপনার সুগার ${n}${unitSuffix}, এটা কম। এখনই আধা গ্লাস ফলের রস বা এক চামচ চিনি পানিতে গুলে খান। ১৫ মিনিট পরে আবার মাপুন।`;
     case "good":
-      return `আপনার সুগার ${n}। এটা ভালো আছে। এভাবেই চালিয়ে যান।`;
+      return `আপনার সুগার ${n}${unitSuffix}। এটা ভালো আছে। এভাবেই চালিয়ে যান।`;
     case "slightly_high":
-      return `আপনার সুগার ${n}, একটু বেশি। পানি খান আর পারলে একটু হাঁটুন।`;
+      return `আপনার সুগার ${n}${unitSuffix}, একটু বেশি। পানি খান আর পারলে একটু হাঁটুন।`;
     case "high":
-      return `আপনার সুগার ${n}, এটা বেশি। পানি খান, মিষ্টি ও ভাত কম খান। কয়েক ঘণ্টা পরে আবার মাপুন।`;
+      return `আপনার সুগার ${n}${unitSuffix}, এটা বেশি। পানি খান, মিষ্টি ও ভাত কম খান। কয়েক ঘণ্টা পরে আবার মাপুন।`;
     case "very_high":
-      return `আপনার সুগার ${n}, এটা অনেক বেশি। আজই আপনার ডাক্তার বা পরিবারের কাউকে জানান। বমি বা খুব ঘুম ঘুম লাগলে এখনই ফোন করুন।`;
+      return `আপনার সুগার ${n}${unitSuffix}, এটা অনেক বেশি। আজই আপনার ডাক্তার বা পরিবারের কাউকে জানান। বমি বা খুব ঘুম ঘুম লাগলে এখনই ফোন করুন।`;
   }
+}
+
+/** Formats any glucose reading to standard Bangladesh mmol/L string */
+export function toMmolString(value: number): string {
+  const mmol = value <= 35 ? value : Number((value / 18).toFixed(1));
+  return `${toBanglaDigits(mmol)} mmol/L`;
 }
 
 export function greetingBn(hour: number): string {

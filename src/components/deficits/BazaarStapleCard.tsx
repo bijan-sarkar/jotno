@@ -22,8 +22,8 @@ export function BazaarStapleCard({ item, onAddToCart }: BazaarStapleCardProps) {
           {item.localNameBengali && <p className="text-sm text-ink-muted">{item.localNameBengali}</p>}
         </div>
         <div className="text-right">
-          <p className="text-sm font-bold text-ink">{item.priceEstimate}</p>
-          <p className="text-xs text-ink-muted">local price</p>
+          <p className="text-sm font-bold text-ink">৳{Math.round(item.pricePerUnit * 120)} <span className="text-xs font-normal text-ink-muted">({item.priceEstimate})</span></p>
+          <p className="text-xs text-ink-muted">বাজারের দাম</p>
         </div>
       </div>
 

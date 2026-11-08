@@ -111,7 +111,7 @@ export function BazaarCartDrawer({
                     {cartItem.item.name}
                   </div>
                   <div className="text-sm font-semibold text-ink-soft">
-                    {cartItem.item.priceEstimate}
+                    ৳{Math.round(cartItem.item.pricePerUnit * 120)} <span className="text-xs font-normal text-ink-muted">({cartItem.item.priceEstimate})</span>
                   </div>
                   <div className="mt-0.5 text-xs text-ink-muted">
                     {cartItem.item.primaryNutrient}
@@ -164,9 +164,9 @@ export function BazaarCartDrawer({
         {cart.length > 0 && (
           <div className="space-y-3 border-t border-line px-5 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
             <div className="flex items-center justify-between text-sm">
-              <span className="text-ink-muted">Estimated total</span>
+              <span className="text-ink-muted">Estimated total (বাজারের খরচ)</span>
               <span className="text-base font-extrabold text-ink">
-                ~${estimatedTotalCost.toFixed(2)}
+                ৳{Math.round(estimatedTotalCost * 120)} <span className="text-xs font-normal text-ink-muted">(~${estimatedTotalCost.toFixed(2)})</span>
               </span>
             </div>
 

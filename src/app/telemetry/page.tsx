@@ -175,7 +175,9 @@ export default function TelemetryPage() {
           <h2 className="section-title mb-3">Readings ({logs.length})</h2>
           <ul className="space-y-2.5">
             {logs.map((log) => {
-              const isInRange = log.glucose_value >= 70 && log.glucose_value <= 140;
+              const valMg = log.glucose_value <= 35 ? log.glucose_value * 18 : log.glucose_value;
+              const isInRange = valMg >= 70 && valMg <= 140;
+              const mmolVal = log.glucose_value <= 35 ? log.glucose_value : Number((log.glucose_value / 18).toFixed(1));
 
               return (
                 <li key={log.id} className="card flex items-center gap-3 p-3.5">
@@ -184,7 +186,10 @@ export default function TelemetryPage() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="font-bold text-ink">
-                      {log.glucose_value} <span className="text-sm font-semibold text-ink-muted">mg/dL</span>
+                      {mmolVal} <span className="text-sm font-semibold text-ink-muted">mmol/L</span>
+                      {log.glucose_value > 35 && (
+                        <span className="ml-1.5 text-xs font-normal text-ink-muted">({log.glucose_value} mg/dL)</span>
+                      )}
                     </p>
                     <p className="text-sm font-medium text-ink-muted">
                       {CONTEXT_LABELS[log.context] ?? log.context} · Day {log.day_offset}

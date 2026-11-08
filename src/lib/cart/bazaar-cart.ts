@@ -116,9 +116,11 @@ export function useBazaarCart() {
     let text = '🛒 *Jotno Local Bazaar Shopping List*\n';
     text += 'Diabetic glycemic-buffering staples:\n\n';
     cart.forEach((ci) => {
-      text += `• ${ci.item.name} (${ci.item.localNameBengali || ''}) - ${ci.quantity} ${ci.item.unit} (~$${(ci.item.pricePerUnit * ci.quantity).toFixed(2)})\n  _${ci.item.primaryNutrient}_\n`;
+      const bdtItem = Math.round(ci.item.pricePerUnit * ci.quantity * 120);
+      text += `• ${ci.item.name} (${ci.item.localNameBengali || ''}) - ${ci.quantity} ${ci.item.unit} (৳${bdtItem} / ~$${(ci.item.pricePerUnit * ci.quantity).toFixed(2)})\n  _${ci.item.primaryNutrient}_\n`;
     });
-    text += `\nEstimated Total: ~$${estimatedTotalCost.toFixed(2)}`;
+    const totalBdt = Math.round(estimatedTotalCost * 120);
+    text += `\nEstimated Total: ৳${totalBdt} (~$${estimatedTotalCost.toFixed(2)})`;
     return text;
   }, [cart, estimatedTotalCost]);
 
