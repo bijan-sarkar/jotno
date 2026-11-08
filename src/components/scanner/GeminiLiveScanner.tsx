@@ -66,6 +66,8 @@ export default function GeminiLiveScanner() {
   // Analysis & Results
   const [isProcessing, setIsProcessing] = useState(false);
   const [result, setResult] = useState<MultimodalOutput | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isLiveResult, setIsLiveResult] = useState<boolean | null>(null);
   const [copiedScript, setCopiedScript] = useState(false);
   const [showPresets, setShowPresets] = useState(false);
   const [textPrompt, setTextPrompt] = useState("");
@@ -265,6 +267,7 @@ export default function GeminiLiveScanner() {
     presetOverride?: { payload: string; query: string },
     fileOverride?: File | Blob
   ) => {
+    setErrorMessage(null);
     setIsFlashing(true);
     setTimeout(() => setIsFlashing(false), 200);
     setIsProcessing(true);
@@ -303,16 +306,36 @@ export default function GeminiLiveScanner() {
         body: formData,
       });
 
+      if (!res.ok) {
+        let errMessage = "স্ক্যান সম্পন্ন করা সম্ভব হয়নি।";
+        try {
+          const errData = await res.json();
+          errMessage = errData.error || errMessage;
+        } catch {
+          errMessage =
+            res.status === 504
+              ? "সার্ভার টাইমআউট (Vercel timeout)। আবার চেষ্টা করুন।"
+              : `সার্ভার ত্রুটি (${res.status})`;
+        }
+        setErrorMessage(errMessage);
+        setIsProcessing(false);
+        return;
+      }
+
       const json = await res.json();
       if (json.success && json.data) {
         setResult(json.data);
+        setIsLiveResult(json.isLive ?? null);
         setIsProcessing(false);
         if (json.data.voice_assistant_response) {
           speakResponse(json.data.voice_assistant_response);
         }
+      } else {
+        setErrorMessage(json.error || "স্ক্যান ফলাফল পাওয়া যায়নি।");
       }
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("Jotno Live scan error:", err);
+      setErrorMessage("নেটওয়ার্ক ত্রুটি। ইন্টারনেট সংযোগ পরীক্ষা করুন।");
     } finally {
       setIsProcessing(false);
     }
@@ -422,7 +445,7 @@ export default function GeminiLiveScanner() {
       {/* 2. TOP FLOATING STATUS & CONTROLS HUD                                 */}
       {/* ===================================================================== */}
       <header className="relative z-20 pt-[calc(env(safe-area-inset-top)+1rem)] px-5 flex items-center justify-between">
-        {/* Top-Left: Jotno Live Status Pill */}
+        {/* Top-Left: Jotno Live Status Pill & Mode Badge */}
         <div className="flex items-center gap-2">
           <button
             type="button"
@@ -433,6 +456,16 @@ export default function GeminiLiveScanner() {
             <span className="w-2 h-2 rounded-full bg-emerald-300 animate-ping" />
             <span className="text-xs font-bold tracking-wide select-none text-white">Jotno Live</span>
           </button>
+          {isLiveResult === true && (
+            <span className="text-[10px] px-2.5 py-1 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 font-semibold backdrop-blur-md">
+              ⚡ লাইভ AI
+            </span>
+          )}
+          {isLiveResult === false && (
+            <span className="text-[10px] px-2.5 py-1 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/40 font-semibold backdrop-blur-md">
+              ডেমো মোড
+            </span>
+          )}
         </div>
 
         {/* Top-Right: 3 Translucent Circular Buttons */}
@@ -468,6 +501,23 @@ export default function GeminiLiveScanner() {
           </button>
         </div>
       </header>
+
+      {/* Error notification banner */}
+      {errorMessage && (
+        <div className="relative z-30 mx-4 mt-2 bg-red-950/95 border border-red-500/60 backdrop-blur-md text-white text-xs p-3 rounded-2xl flex items-start justify-between gap-3 shadow-2xl animate-fade-in">
+          <div className="flex items-start gap-2">
+            <span className="text-red-400 font-bold text-sm shrink-0">⚠️</span>
+            <p className="text-xs leading-relaxed text-red-100">{errorMessage}</p>
+          </div>
+          <button
+            onClick={() => setErrorMessage(null)}
+            className="text-red-300 hover:text-white p-1 text-sm font-bold shrink-0"
+            aria-label="Dismiss error"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* ===================================================================== */}
       {/* 3. PRESETS POPUP / QUICK DRAWER (ACCESSIBLE VIA TOP HUD)              */}

@@ -5,6 +5,9 @@ import { estimateRecipeCost, type RecipeCostEstimate } from "@/lib/pricing/cost-
 import { env, getSystemEnvStatus } from "@/lib/env";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
+export const dynamic = "force-dynamic";
+export const maxDuration = 30;
+
 export type ScanMode = "auto" | "grocery_bazaar" | "restaurant_menu" | "prepared_food";
 
 export interface MultimodalOutput {
@@ -321,22 +324,25 @@ export async function POST(req: NextRequest) {
     }
 
     const envStatus = getSystemEnvStatus();
-    let parsedAI: MultimodalOutput;
+    let parsedAI: MultimodalOutput | null = null;
+    let isLiveAi = false;
+    let modelUsed: string | null = null;
 
-    // Call Gemini 2.5 Flash if live API is ready
+    // Call Gemini Flash models if live API key is available
     if (
       envStatus.gemini.isLive &&
       (imageBase64 || audioBase64) &&
       !presetIdentifier?.startsWith("mock-")
     ) {
-      try {
-        const ai = new GoogleGenAI({ apiKey: env.geminiApiKey });
-        type ContentPart =
-          | { inlineData: { mimeType: string; data: string } }
-          | { text: string };
-        const parts: ContentPart[] = [];
-        const contents: Array<{ role: string; parts: ContentPart[] }> = [];
+      const CANDIDATE_MODELS = ["gemini-2.5-flash", "gemini-3.5-flash-lite"];
+      const ai = new GoogleGenAI({ apiKey: env.geminiApiKey });
 
+      type ContentPart =
+        | { inlineData: { mimeType: string; data: string } }
+        | { text: string };
+
+      const buildContentParts = (includeAudio: boolean): ContentPart[] => {
+        const parts: ContentPart[] = [];
         if (imageBase64) {
           parts.push({
             inlineData: {
@@ -345,17 +351,19 @@ export async function POST(req: NextRequest) {
             },
           });
         }
-
-        if (audioBase64) {
+        if (includeAudio && audioBase64 && audioBase64.length > 200) {
           parts.push({
             inlineData: {
-              mimeType: audioMimeType,
+              mimeType: audioMimeType.split(";")[0],
               data: audioBase64,
             },
           });
         }
+        parts.push({ text: systemInstruction });
+        return parts;
+      };
 
-        const systemInstruction = `
+      const systemInstruction = `
 You are "Jotno Live Scan" (যত্ন লাইভ স্ক্যান), an expert clinical diabetic nutritionist and multimodal food analyst.
 Mode: ${scanMode} (automatically identify content if "auto").
 User question or spoken voice transcript: "${textQuery || "Analyze diabetes safety and recommend actions."}".
@@ -409,45 +417,76 @@ Return ONLY a raw JSON object matching this schema with NO markdown code fences:
   "voice_assistant_response": "string (in fluent Bangla)"
 }`;
 
-        parts.push({ text: systemInstruction });
-        contents.push({ role: "user", parts });
+      for (const model of CANDIDATE_MODELS) {
+        try {
+          // Attempt 1: With audio if provided
+          let parts = buildContentParts(Boolean(audioBase64));
+          let generatePromise = ai.models.generateContent({
+            model,
+            contents: [{ role: "user", parts }],
+            config: {
+              responseMimeType: "application/json",
+              maxOutputTokens: 1000,
+              temperature: 0.2,
+            },
+          });
 
-        const generatePromise = ai.models.generateContent({
-          model: "gemini-2.5-flash",
-          contents,
-          config: {
-            responseMimeType: "application/json",
-            maxOutputTokens: 1000,
-            temperature: 0.2,
-          },
-        });
+          let timeoutPromise = new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error(`Gemini multimodal inference timed out for ${model}`)), 12000)
+          );
 
-        const timeoutPromise = new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error("Gemini multimodal inference timed out")), 9000)
-        );
+          let response;
+          try {
+            response = await Promise.race([generatePromise, timeoutPromise]);
+          } catch (audioOrModelErr) {
+            // If failed and audio was included, retry without audio in case audio codec failed
+            if (audioBase64) {
+              console.warn(`[Gemini Multimodal] Retrying ${model} without audio part:`, audioOrModelErr);
+              parts = buildContentParts(false);
+              generatePromise = ai.models.generateContent({
+                model,
+                contents: [{ role: "user", parts }],
+                config: {
+                  responseMimeType: "application/json",
+                  maxOutputTokens: 1000,
+                  temperature: 0.2,
+                },
+              });
+              timeoutPromise = new Promise<never>((_, reject) =>
+                setTimeout(() => reject(new Error(`Gemini multimodal inference timed out for ${model} without audio`)), 10000)
+              );
+              response = await Promise.race([generatePromise, timeoutPromise]);
+            } else {
+              throw audioOrModelErr;
+            }
+          }
 
-        const response = await Promise.race([generatePromise, timeoutPromise]);
+          const rawText = response.text || "{}";
+          const sanitized = rawText.replace(/^```json\s*/i, "").replace(/\s*```$/, "").trim();
+          const parsedObj = JSON.parse(sanitized);
 
-        const rawText = response.text || "{}";
-        const sanitized = rawText.replace(/^```json\s*/i, "").replace(/\s*```$/, "").trim();
-        parsedAI = JSON.parse(sanitized);
-
-        if (!parsedAI.detected_type) {
-          parsedAI.detected_type = detectCategoryFromInput(textQuery, presetIdentifier);
+          if (!parsedObj.detected_type) {
+            parsedObj.detected_type = detectCategoryFromInput(textQuery, presetIdentifier);
+          }
+          if (!parsedObj.detected_title) {
+            parsedObj.detected_title =
+              parsedObj.detected_type === "restaurant_menu"
+                ? "Restaurant Dining Menu"
+                : parsedObj.detected_type === "prepared_food"
+                ? "Cooked Meal Plate"
+                : "Raw Grocery & Bazaar Basket";
+          }
+          parsedAI = parsedObj as MultimodalOutput;
+          isLiveAi = true;
+          modelUsed = model;
+          break; // Succeeded!
+        } catch (modelErr) {
+          console.warn(`[Gemini Multimodal ${model} failed]:`, modelErr);
         }
-        if (!parsedAI.detected_title) {
-          parsedAI.detected_title =
-            parsedAI.detected_type === "restaurant_menu"
-              ? "Restaurant Dining Menu"
-              : parsedAI.detected_type === "prepared_food"
-              ? "Cooked Meal Plate"
-              : "Raw Grocery & Bazaar Basket";
-        }
-      } catch (geminiError) {
-        console.warn("[Gemini Multimodal Live Error - Falling back to clinical baseline]:", geminiError);
-        parsedAI = getFallbackResponse(scanMode, textQuery, presetIdentifier);
       }
-    } else {
+    }
+
+    if (!parsedAI) {
       // Use structured clinical fallback
       parsedAI = getFallbackResponse(scanMode, textQuery, presetIdentifier);
     }
@@ -519,6 +558,9 @@ Return ONLY a raw JSON object matching this schema with NO markdown code fences:
     return NextResponse.json({
       success: true,
       data: parsedAI,
+      isLive: isLiveAi,
+      model: modelUsed,
+      apiConfigured: envStatus.gemini.isLive,
       latencyMs: Date.now() - startTime,
       detected_type: parsedAI.detected_type,
       mode: scanMode,

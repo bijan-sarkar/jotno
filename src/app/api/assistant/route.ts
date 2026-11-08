@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { runElderAssistant, type AssistantMode } from "@/lib/ai/elder-assistant";
+export const dynamic = "force-dynamic";
+export const maxDuration = 30;
 
 const MAX_AUDIO_BYTES = 2 * 1024 * 1024;
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024;

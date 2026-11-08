@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { synthesizeBanglaSpeech } from "@/lib/ai/elder-assistant";
+export const dynamic = "force-dynamic";
+export const maxDuration = 30;
 
 /**
  * POST { text } → audio/wav (12 kHz mono). 503 when speech is unavailable,
