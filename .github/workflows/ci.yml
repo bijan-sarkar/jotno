@@ -27,18 +27,18 @@ jobs:
 
       - name: Run Test Suite
         env:
-          NEXT_PUBLIC_SUPABASE_URL: https://mock.supabase.co
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: mock-anon-key
-          SUPABASE_SERVICE_ROLE_KEY: mock-service-key
-          GEMINI_API_KEY: mock-gemini-key
+          NEXT_PUBLIC_SUPABASE_URL: placeholder-supabase-url
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
+          SUPABASE_SERVICE_ROLE_KEY: placeholder-service-role-key
+          GEMINI_API_KEY: placeholder-gemini-key
           NEXT_PUBLIC_APP_URL: http://localhost:3000
         run: npx vitest run
 
       - name: Build Next.js Application
         env:
-          NEXT_PUBLIC_SUPABASE_URL: https://mock.supabase.co
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: mock-anon-key
-          SUPABASE_SERVICE_ROLE_KEY: mock-service-key
-          GEMINI_API_KEY: mock-gemini-key
+          NEXT_PUBLIC_SUPABASE_URL: placeholder-supabase-url
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
+          SUPABASE_SERVICE_ROLE_KEY: placeholder-service-role-key
+          GEMINI_API_KEY: placeholder-gemini-key
           NEXT_PUBLIC_APP_URL: http://localhost:3000
         run: npm run build
