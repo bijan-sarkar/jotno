@@ -8,7 +8,7 @@ on:
 
 jobs:
   build-and-test:
-    name: Lint, Test & Build Validation
+    name: Lint, Test & Build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -21,7 +21,9 @@ jobs:
           cache: 'npm'
 
       - name: Install Dependencies
-        run: npm ci
+        run: |
+          npm ci
+          npm install undici@latest
 
       - name: Run Test Suite
         env:
@@ -30,3 +32,11 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: mock-service-key
           GEMINI_API_KEY: mock-gemini-key
         run: npm test -- --run
+
+      - name: Build Validation
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://mock.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: mock-anon-key
+          SUPABASE_SERVICE_ROLE_KEY: mock-service-key
+          GEMINI_API_KEY: mock-gemini-key
+        run: npm run build
