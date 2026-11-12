@@ -24,4 +24,9 @@ jobs:
         run: npm ci
 
       - name: Run Test Suite
-        run: npm test
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://mock.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: mock-anon-key
+          SUPABASE_SERVICE_ROLE_KEY: mock-service-key
+          GEMINI_API_KEY: mock-gemini-key
+        run: npm test -- --run
