@@ -21,7 +21,9 @@ jobs:
           cache: 'npm'
 
       - name: Install Dependencies
-        run: npm ci
+        run: |
+          npm ci
+          npm install -D happy-dom
 
       - name: Run Test Suite
         env:
@@ -30,7 +32,7 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: mock-service-key
           GEMINI_API_KEY: mock-gemini-key
           NEXT_PUBLIC_APP_URL: http://localhost:3000
-        run: npx vitest run --environment=node
+        run: npx vitest run --environment=happy-dom
 
       - name: Build Next.js Application
         env:
